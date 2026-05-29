@@ -140,10 +140,10 @@
 
     .nav-toggle { display: none; background: none; border: none; color: var(--text); font-size: 1.7rem; cursor: pointer; }
 
-    /* ---------- HERO (full-width, scroll-scrubbed video) ---------- */
+    /* ---------- HERO (full-width, canvas-based scroll scrub) ---------- */
     .hero-scroll {
       position: relative;
-      height: 300vh;          /* scroll track that drives the video timeline */
+      height: 300vh;
     }
     .hero-pin {
       position: sticky;
@@ -153,14 +153,23 @@
       overflow: hidden;
       background: var(--bg);
     }
-    .hero-pin video {
+    #heroCanvas {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
-      object-fit: cover;       /* full-bleed across the whole width */
+      object-fit: cover;
       display: block;
-      background: var(--bg);
+    }
+    /* loading bar shown while frames are being extracted */
+    #heroLoader {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 2px;
+      width: 0%;
+      background: var(--grad);
+      transition: width 0.1s linear;
+      z-index: 10;
     }
     .hero-overlay {
       position: absolute;
@@ -399,12 +408,11 @@
     </div>
   </header>
 
-  <!-- HERO: full-width video scrubbed by scroll position -->
+  <!-- HERO: canvas-based frame scrub — no video.currentTime during scroll -->
   <section class="hero-scroll">
     <div class="hero-pin">
-      <video id="heroVideo" muted playsinline preload="auto">
-        <source src="amviko-hero.mp4" type="video/mp4" />
-      </video>
+      <canvas id="heroCanvas"></canvas>
+      <div id="heroLoader"></div>
       <div class="hero-overlay">
         <div class="hero-content" id="heroContent">
           <h1>ИИ-решения, которые работают <b>на ваш бизнес</b></h1>
@@ -567,74 +575,117 @@
   <script>
     const prefersStillGlobal = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Sticky nav background on scroll (just a class toggle, no layout work)
+    // Sticky nav
     const header = document.getElementById('header');
+    window.addEventListener('scroll', () => {
+      header.classList.toggle('scrolled', window.scrollY > 24);
+    }, { passive: true });
 
-    /* ---- Scroll-scrubbed hero video ----
-       The .hero-scroll track is 300vh tall. As it passes through the viewport,
-       scroll progress (0..1) maps onto the video timeline. A rAF loop eases the
-       playhead toward the target time so scrubbing stays smooth and never janks. */
-    const video = document.getElementById('heroVideo');
+    /* ---- Canvas-based scroll scrub ----
+       All frames are extracted once on load into ImageBitmap objects.
+       During scroll we just call ctx.drawImage(frames[i]) — zero seeking,
+       zero decode latency, perfectly smooth at 60fps. */
+    const canvas     = document.getElementById('heroCanvas');
+    const ctx        = canvas.getContext('2d');
+    const loader     = document.getElementById('heroLoader');
     const heroScroll = document.querySelector('.hero-scroll');
     const heroContent = document.getElementById('heroContent');
-    let duration = 0, targetTime = 0, seeking = false, running = false;
 
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-    function onScroll() {
-      header.classList.toggle('scrolled', window.scrollY > 24);
-      if (prefersStillGlobal || !duration) return;
+    function resizeCanvas() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+      drawCurrentFrame();
+    }
 
-      const rect = heroScroll.getBoundingClientRect();
+    let frames = [];
+    let currentFrameIndex = 0;
+
+    function drawCurrentFrame() {
+      if (!frames.length) return;
+      const f = frames[currentFrameIndex];
+      if (!f) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // cover: scale to fill canvas keeping aspect ratio
+      const cw = canvas.width, ch = canvas.height;
+      const fw = f.width,      fh = f.height;
+      const scale = Math.max(cw / fw, ch / fh);
+      const dw = fw * scale, dh = fh * scale;
+      ctx.drawImage(f, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+    }
+
+    function onScroll() {
+      if (!frames.length) return;
+      const rect  = heroScroll.getBoundingClientRect();
       const total = heroScroll.offsetHeight - window.innerHeight;
       const progress = clamp(-rect.top / total, 0, 1);
 
-      targetTime = progress * duration;
+      currentFrameIndex = Math.round(progress * (frames.length - 1));
+      drawCurrentFrame();
 
-      // value prop fades in once the logo has mostly assembled (progress 0.6 -> 0.95)
       const textIn = clamp((progress - 0.6) / 0.35, 0, 1);
       heroContent.style.opacity = textIn;
       heroContent.style.transform = `translateY(${(1 - textIn) * 18}px)`;
-
-      if (!running) { running = true; requestAnimationFrame(loop); }
     }
 
-    /* Smooth playhead: ease toward the scroll target, but only issue a NEW seek
-       once the previous one finished ('seeked'). This prevents the seek backlog
-       that makes currentTime-per-frame scrubbing stutter. */
-    function loop() {
-      const diff = targetTime - video.currentTime;
-      if (!seeking && Math.abs(diff) > 0.015 && video.readyState >= 1) {
-        seeking = true;
-        const next = video.currentTime + diff * 0.3;   // ease, do not jump
-        try { video.currentTime = next; } catch (e) { seeking = false; }
+    async function extractFrames(src, total) {
+      const vid = document.createElement('video');
+      vid.src = src;
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.preload = 'auto';
+      vid.crossOrigin = 'anonymous';
+
+      await new Promise((res, rej) => {
+        vid.addEventListener('loadedmetadata', res, { once: true });
+        vid.addEventListener('error', rej, { once: true });
+        vid.load();
+      });
+
+      const duration = vid.duration;
+      const off = document.createElement('canvas');
+      off.width  = vid.videoWidth;
+      off.height = vid.videoHeight;
+      const octx = off.getContext('2d');
+      const result = [];
+
+      for (let i = 0; i < total; i++) {
+        const t = (i / (total - 1)) * duration;
+        await new Promise(res => {
+          vid.addEventListener('seeked', res, { once: true });
+          vid.currentTime = t;
+        });
+        octx.drawImage(vid, 0, 0);
+        result.push(await createImageBitmap(off));
+
+        if (loader) loader.style.width = ((i + 1) / total * 100) + '%';
       }
-      if (Math.abs(diff) > 0.01 || seeking) {
-        requestAnimationFrame(loop);
-      } else {
-        running = false;   // idle: stop the loop until the next scroll
-      }
+
+      vid.src = '';
+      return result;
     }
+
+    window.addEventListener('resize', () => { resizeCanvas(); onScroll(); }, { passive: true });
+    resizeCanvas();
 
     if (prefersStillGlobal) {
-      // reduced motion: let the clip play on its own, keep the text visible
-      video.loop = true;
-      video.play().catch(() => {});
+      // reduced motion: play the video normally instead
+      const vid = document.createElement('video');
+      vid.src = 'amviko-hero.mp4';
+      vid.autoplay = true; vid.muted = true; vid.loop = true; vid.playsInline = true;
+      vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
+      canvas.replaceWith(vid);
       if (heroContent) heroContent.style.opacity = 1;
     } else {
-      video.pause();
-      if (heroContent) heroContent.style.opacity = 0;
-      video.addEventListener('seeked', () => { seeking = false; });
-      video.addEventListener('loadedmetadata', () => {
-        duration = video.duration || 0;
+      heroContent.style.opacity = 0;
+      extractFrames('amviko-hero.mp4', 90).then(f => {
+        frames = f;
+        if (loader) loader.style.display = 'none';
         onScroll();
-      });
-      if (video.readyState >= 1 && video.duration) { duration = video.duration; }
+        window.addEventListener('scroll', onScroll, { passive: true });
+      }).catch(console.error);
     }
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
-    onScroll();
 
     // Scroll reveal via IntersectionObserver (skill: no scroll-listener-driven animation)
     const prefersStill = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
