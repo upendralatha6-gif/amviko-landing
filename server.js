@@ -17,14 +17,47 @@ const MIME = {
 
 http.createServer((req, res) => {
   let filePath = path.join(__dirname, req.url === '/' ? 'index.html' : req.url);
-  const ext = path.extname(filePath);
 
-  fs.stat(filePath, (err) => {
+  fs.stat(filePath, (err, stat) => {
     if (err) {
       filePath = path.join(__dirname, 'index.html');
+      fs.stat(filePath, (e2, s2) => {
+        if (e2) { res.writeHead(404); res.end('Not found'); return; }
+        sendFile(req, res, filePath, s2);
+      });
+      return;
     }
-    const mime = MIME[path.extname(filePath)] || 'application/octet-stream';
-    res.setHeader('Content-Type', mime);
-    fs.createReadStream(filePath).pipe(res);
+    sendFile(req, res, filePath, stat);
   });
 }).listen(PORT, () => console.log(`Running on port ${PORT}`));
+
+function sendFile(req, res, filePath, stat) {
+  const ext  = path.extname(filePath);
+  const mime = MIME[ext] || 'application/octet-stream';
+  const size = stat.size;
+  const range = req.headers.range;
+
+  // Range requests — required for video seeking in browsers
+  if (range) {
+    const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(startStr, 10);
+    const end   = endStr ? parseInt(endStr, 10) : size - 1;
+    const chunkSize = end - start + 1;
+
+    res.writeHead(206, {
+      'Content-Range':  `bytes ${start}-${end}/${size}`,
+      'Accept-Ranges':  'bytes',
+      'Content-Length': chunkSize,
+      'Content-Type':   mime,
+    });
+    fs.createReadStream(filePath, { start, end }).pipe(res);
+    return;
+  }
+
+  res.writeHead(200, {
+    'Content-Length': size,
+    'Content-Type':   mime,
+    'Accept-Ranges':  'bytes',
+  });
+  fs.createReadStream(filePath).pipe(res);
+}
