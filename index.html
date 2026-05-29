@@ -665,11 +665,13 @@
       if (!frames.length) return;
       const f = frames[currentFrameIndex];
       if (!f) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // cover: scale to fill canvas keeping aspect ratio
       const cw = canvas.width, ch = canvas.height;
       const fw = f.width,      fh = f.height;
-      const scale = Math.max(cw / fw, ch / fh);
+      // fill background first so letterbox areas match brand color
+      ctx.fillStyle = '#06091A';
+      ctx.fillRect(0, 0, cw, ch);
+      // contain: always show full frame, no cropping
+      const scale = Math.min(cw / fw, ch / fh);
       const dw = fw * scale, dh = fh * scale;
       ctx.drawImage(f, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
     }
