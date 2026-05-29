@@ -181,7 +181,7 @@
       overflow: hidden;
       background: var(--bg);
     }
-    #heroCanvas {
+    #heroVideo, #heroCanvas {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -467,10 +467,12 @@
     <a href="#contact" class="btn btn-primary" onclick="closeMobileMenu()">Обсудить проект</a>
   </div>
 
-  <!-- HERO: canvas-based frame scrub — no video.currentTime during scroll -->
+  <!-- HERO: video on mobile, canvas scrub on desktop -->
   <section class="hero-scroll">
     <div class="hero-pin">
-      <canvas id="heroCanvas"></canvas>
+      <!-- always shown first; hidden on desktop once canvas is ready -->
+      <video id="heroVideo" autoplay muted loop playsinline></video>
+      <canvas id="heroCanvas" style="display:none;"></canvas>
       <div id="heroLoader"></div>
       <div class="hero-overlay">
         <div class="hero-content" id="heroContent">
@@ -733,25 +735,34 @@
       return result;
     }
 
+    const heroVideo = document.getElementById('heroVideo');
+    const isMobile  = () => window.innerWidth < 768;
+
+    // Choose video source based on viewport — square crop for mobile
+    heroVideo.src = isMobile() ? 'amviko-hero-mobile.mp4' : 'amviko-hero.mp4';
+
     window.addEventListener('resize', () => { resizeCanvas(); onScroll(); }, { passive: true });
     resizeCanvas();
 
-    if (prefersStillGlobal) {
-      // reduced motion: play the video normally instead
-      const vid = document.createElement('video');
-      vid.src = 'amviko-hero.mp4';
-      vid.autoplay = true; vid.muted = true; vid.loop = true; vid.playsInline = true;
-      vid.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;';
-      canvas.replaceWith(vid);
-      if (heroContent) heroContent.style.opacity = 1;
+    if (prefersStillGlobal || isMobile()) {
+      // Mobile / reduced-motion: autoplay video, text always visible
+      if (heroContent) { heroContent.style.opacity = 1; heroContent.style.transform = 'none'; }
+      if (loader) loader.style.display = 'none';
     } else {
+      // Desktop: extract all frames then switch from video to canvas
       heroContent.style.opacity = 0;
       extractFrames('amviko-hero.mp4', 90).then(f => {
         frames = f;
+        // swap: hide video, show canvas
+        canvas.style.display = 'block';
+        heroVideo.style.display = 'none';
         if (loader) loader.style.display = 'none';
         onScroll();
         window.addEventListener('scroll', onScroll, { passive: true });
-      }).catch(console.error);
+      }).catch(() => {
+        // fallback: keep video playing if canvas fails
+        if (heroContent) { heroContent.style.opacity = 1; heroContent.style.transform = 'none'; }
+      });
     }
 
     // Scroll reveal via IntersectionObserver (skill: no scroll-listener-driven animation)
