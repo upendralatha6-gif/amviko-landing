@@ -138,7 +138,35 @@
     .btn-ghost:hover { border-color: var(--border-hi); background: var(--card-hi); }
     .btn-ghost:active { transform: translateY(1px); }
 
-    .nav-toggle { display: none; background: none; border: none; color: var(--text); font-size: 1.7rem; cursor: pointer; }
+    .nav-toggle { display: none; background: none; border: none; color: var(--text); font-size: 1.7rem; cursor: pointer; z-index: 60; position: relative; }
+    /* mobile drawer */
+    .mobile-menu {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 55;
+      background: rgba(6, 9, 26, 0.97);
+      backdrop-filter: blur(16px);
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+    }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+    .mobile-menu a:hover { color: var(--accent-2); }
+    .mobile-close {
+      position: absolute;
+      top: 20px; right: 20px;
+      background: none; border: none;
+      color: var(--text); font-size: 1.8rem; cursor: pointer;
+    }
 
     /* ---------- HERO (full-width, canvas-based scroll scrub) ---------- */
     .hero-scroll {
@@ -370,22 +398,41 @@
     /* ---------- RESPONSIVE ---------- */
     @media (max-width: 900px) {
       .bento { grid-template-columns: repeat(2, 1fr); }
-      .c-w3, .c-w2 { grid-column: span 1; }
+      .c-w2, .c-w3 { grid-column: span 1; }
       .c-w4, .c-w6 { grid-column: span 2; }
+      /* wide card with inline row — stack vertically */
+      .card.feature.c-w6 { flex-direction: column !important; align-items: flex-start !important; }
       .steps { grid-template-columns: repeat(2, 1fr); }
       .step { border-right: none; border-bottom: 1px solid var(--border); padding: 28px 0; }
       .contact-grid { grid-template-columns: 1fr; gap: 40px; }
       .metrics { gap: 16px; }
+      .section-head { margin-bottom: 36px; }
     }
     @media (max-width: 720px) {
       .nav-links { display: none; }
       .nav-toggle { display: block; }
-      .pad { padding: 80px 0; }
+      /* hide CTA button in nav on mobile — only keep hamburger */
+      header .btn-primary { display: none; }
+      .pad { padding: 72px 0; }
+      .hero-overlay { padding-bottom: clamp(36px, 10vh, 80px); }
+      .hero-content h1 { font-size: clamp(1.8rem, 6vw, 2.4rem); }
+      .hero-content p { font-size: 0.97rem; }
+      .hero-cta { gap: 10px; }
+      .hero-cta .btn { padding: 11px 18px; font-size: 0.9rem; }
+      .statement blockquote { font-size: clamp(1.4rem, 5vw, 2rem); }
     }
     @media (max-width: 480px) {
       .bento { grid-template-columns: 1fr; }
+      .c-w2, .c-w3, .c-w4, .c-w6 { grid-column: span 1; }
+      .card.feature.c-w6 { flex-direction: column !important; }
       .steps { grid-template-columns: 1fr; }
+      .step { border-right: none; border-bottom: 1px solid var(--border); padding: 24px 0; }
       .metrics { grid-template-columns: 1fr; gap: 28px; }
+      .foot { flex-direction: column; align-items: flex-start; gap: 16px; }
+      .wrap { padding: 0 16px; }
+      .pad { padding: 60px 0; }
+      .section-head h2 { font-size: clamp(1.6rem, 7vw, 2rem); }
+      .contact-info h2 { font-size: clamp(1.6rem, 7vw, 2rem); }
     }
   </style>
 </head>
@@ -402,11 +449,23 @@
         <a href="#contact">Контакты</a>
       </nav>
       <a href="#contact" class="btn btn-primary" style="padding:10px 20px;">Обсудить проект</a>
-      <button class="nav-toggle" aria-label="Меню" onclick="document.querySelector('.nav-links').style.display = document.querySelector('.nav-links').style.display==='flex'?'none':'flex'">
+      <button class="nav-toggle" aria-label="Меню" id="menuOpen">
         <i class="ph-duotone ph-list"></i>
       </button>
     </div>
   </header>
+
+  <!-- Mobile drawer -->
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="mobile-close" id="menuClose" aria-label="Закрыть">
+      <i class="ph-duotone ph-x"></i>
+    </button>
+    <a href="#services" onclick="closeMobileMenu()">Услуги</a>
+    <a href="#process" onclick="closeMobileMenu()">Подход</a>
+    <a href="#about"   onclick="closeMobileMenu()">О нас</a>
+    <a href="#contact" onclick="closeMobileMenu()">Контакты</a>
+    <a href="#contact" class="btn btn-primary" onclick="closeMobileMenu()">Обсудить проект</a>
+  </div>
 
   <!-- HERO: canvas-based frame scrub — no video.currentTime during scroll -->
   <section class="hero-scroll">
@@ -704,6 +763,12 @@
     } else {
       document.querySelectorAll('.reveal').forEach(el => el.classList.add('in'));
     }
+
+    // Mobile menu
+    const mobileMenu = document.getElementById('mobileMenu');
+    document.getElementById('menuOpen').addEventListener('click', () => mobileMenu.classList.add('open'));
+    document.getElementById('menuClose').addEventListener('click', () => mobileMenu.classList.remove('open'));
+    function closeMobileMenu() { mobileMenu.classList.remove('open'); }
 
     // Form handler: opens the user's mail client with a prefilled message.
     function sendForm(e) {
