@@ -711,8 +711,11 @@
       const octx = off.getContext('2d');
       const result = [];
 
+      // skip the first ~10% of the video which is usually a black fade-in
+      const startFrac = 0.10;
+
       for (let i = 0; i < total; i++) {
-        const t = (i / (total - 1)) * duration;
+        const t = startFrac * duration + (i / (total - 1)) * (1 - startFrac) * duration;
         await new Promise(res => {
           vid.addEventListener('seeked', res, { once: true });
           vid.currentTime = t;
