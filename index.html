@@ -799,14 +799,33 @@
     document.getElementById('menuClose').addEventListener('click', () => mobileMenu.classList.remove('open'));
     function closeMobileMenu() { mobileMenu.classList.remove('open'); }
 
-    // Form handler: opens the user's mail client with a prefilled message.
-    function sendForm(e) {
+    async function sendForm(e) {
       e.preventDefault();
-      const name = encodeURIComponent(document.getElementById('name').value);
-      const email = encodeURIComponent(document.getElementById('email').value);
-      const msg = encodeURIComponent(document.getElementById('msg').value);
-      const body = `Имя: ${decodeURIComponent(name)}%0AКонтакт: ${decodeURIComponent(email)}%0A%0A${decodeURIComponent(msg)}`;
-      window.location.href = `mailto:hello@amviko.ai?subject=Заявка с сайта Amviko&body=${body}`;
+      const name  = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const msg   = document.getElementById('msg').value.trim();
+
+      const text = `🆕 <b>Новая заявка — Amviko</b>\n\n👤 <b>Имя:</b> ${name}\n📧 <b>Контакт:</b> ${email}\n\n💬 <b>Задача:</b>\n${msg}`;
+
+      const btn = e.target.querySelector('button[type="submit"]');
+      const originalHTML = btn.innerHTML;
+      btn.disabled = true;
+      btn.textContent = 'Отправляем…';
+
+      try {
+        const res = await fetch('https://api.telegram.org/bot8846954472:AAGwzaMnjUX2Q-2yZ4zkHIkxVTWZPb-5Qq8/sendMessage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: 941957416, text, parse_mode: 'HTML' })
+        });
+        if (!res.ok) throw new Error();
+        btn.textContent = '✓ Заявка отправлена!';
+        e.target.reset();
+      } catch {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+        alert('Не удалось отправить. Попробуйте ещё раз.');
+      }
       return false;
     }
   </script>
