@@ -812,13 +812,17 @@
       btn.disabled = true;
       btn.textContent = 'Отправляем…';
 
+      const recipients = [941957416, 791554988, 543165971];
+
       try {
-        const res = await fetch('https://api.telegram.org/bot8846954472:AAGwzaMnjUX2Q-2yZ4zkHIkxVTWZPb-5Qq8/sendMessage', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: 941957416, text, parse_mode: 'HTML' })
-        });
-        if (!res.ok) throw new Error();
+        const results = await Promise.all(recipients.map(chat_id =>
+          fetch('https://api.telegram.org/bot8846954472:AAGwzaMnjUX2Q-2yZ4zkHIkxVTWZPb-5Qq8/sendMessage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id, text, parse_mode: 'HTML' })
+          })
+        ));
+        if (!results.every(r => r.ok)) throw new Error();
         btn.textContent = '✓ Заявка отправлена!';
         e.target.reset();
       } catch {
