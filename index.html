@@ -689,7 +689,7 @@
         const scale = Math.min(cw / fw, ch / fh) * 0.90;
         const dw = fw * scale, dh = fh * scale;
         const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
-        const fade = Math.min(dw, dh) * 0.13;
+        const fade = Math.min(dw, dh) * 0.05;
 
         fgCtx.clearRect(0, 0, cw, ch);
         fgCtx.drawImage(f, dx, dy, dw, dh);
