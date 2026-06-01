@@ -681,14 +681,11 @@
 
       if (window.innerWidth < 768) {
         const dpr = window.devicePixelRatio || 1;
-        // 1. blurred background — oversized so its own edges go off-screen
-        ctx.save();
-        ctx.filter = `blur(${Math.round(28 * dpr)}px) brightness(0.55)`;
-        const bgScale = Math.max(cw / fw, ch / fh) * 1.6;
-        ctx.drawImage(f, (cw - fw * bgScale) / 2, (ch - fh * bgScale) / 2, fw * bgScale, fh * bgScale);
-        ctx.restore();
+        // solid dark background matching site color
+        ctx.fillStyle = '#080818';
+        ctx.fillRect(0, 0, cw, ch);
 
-        // 2. foreground with faded edges drawn on tmp canvas then composited
+        // foreground with faded edges drawn on tmp canvas then composited
         const scale = Math.min(cw / fw, ch / fh) * 0.90;
         const dw = fw * scale, dh = fh * scale;
         const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
