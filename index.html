@@ -651,6 +651,8 @@
     const loader     = document.getElementById('heroLoader');
     const heroScroll = document.querySelector('.hero-scroll');
     const heroContent = document.getElementById('heroContent');
+    let   fgCanvas   = document.createElement('canvas');
+    let   fgCtx      = fgCanvas.getContext('2d');
 
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
@@ -661,6 +663,8 @@
       canvas.height = h * dpr;
       canvas.style.width  = w + 'px';
       canvas.style.height = h + 'px';
+      fgCanvas.width  = w * dpr;
+      fgCanvas.height = h * dpr;
       drawCurrentFrame();
     }
 
@@ -677,17 +681,40 @@
 
       if (window.innerWidth < 768) {
         const dpr = window.devicePixelRatio || 1;
-        // bg: 1.6x larger than cover so edges are pushed off-screen, then blurred
+        // 1. blurred background — oversized so its own edges go off-screen
         ctx.save();
         ctx.filter = `blur(${Math.round(28 * dpr)}px) brightness(0.55)`;
         const bgScale = Math.max(cw / fw, ch / fh) * 1.6;
-        const bgW = fw * bgScale, bgH = fh * bgScale;
-        ctx.drawImage(f, (cw - bgW) / 2, (ch - bgH) / 2, bgW, bgH);
+        ctx.drawImage(f, (cw - fw * bgScale) / 2, (ch - fh * bgScale) / 2, fw * bgScale, fh * bgScale);
         ctx.restore();
-        // foreground: sharp, fully contained
+
+        // 2. foreground with faded edges drawn on tmp canvas then composited
         const scale = Math.min(cw / fw, ch / fh) * 0.90;
         const dw = fw * scale, dh = fh * scale;
-        ctx.drawImage(f, (cw - dw) / 2, (ch - dh) / 2, dw, dh);
+        const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
+        const fade = Math.min(dw, dh) * 0.13;
+
+        fgCtx.clearRect(0, 0, cw, ch);
+        fgCtx.drawImage(f, dx, dy, dw, dh);
+
+        // erase edges with destination-out gradients
+        fgCtx.globalCompositeOperation = 'destination-out';
+        const edges = [
+          [dx, 0,           dx + fade, 0,           dx, dy,      fade, dh],   // left
+          [dx + dw - fade, 0, dx + dw, 0,           dx + dw - fade, dy, fade, dh],  // right
+          [0, dy,           0, dy + fade,            dx, dy,      dw, fade],   // top
+          [0, dy + dh - fade, 0, dy + dh,            dx, dy + dh - fade, dw, fade],  // bottom
+        ];
+        edges.forEach(([x1, y1, x2, y2, rx, ry, rw, rh]) => {
+          const g = fgCtx.createLinearGradient(x1, y1, x2, y2);
+          g.addColorStop(0, 'rgba(0,0,0,1)');
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+          fgCtx.fillStyle = g;
+          fgCtx.fillRect(rx, ry, rw, rh);
+        });
+        fgCtx.globalCompositeOperation = 'source-over';
+
+        ctx.drawImage(fgCanvas, 0, 0);
       } else {
         const scale = Math.max(cw / fw, ch / fh);
         const dw = fw * scale, dh = fh * scale;
