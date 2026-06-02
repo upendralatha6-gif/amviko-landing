@@ -733,6 +733,11 @@
 
     function startParticleLoop() {
       if (loopAnimId) return;
+      currentFrameIndex = 0;
+      loopFrameDir = 1;
+      lastLoopTime = 0;
+      heroContent.style.opacity = 0;
+      heroContent.style.transform = 'translateY(18px)';
       function tick(ts) {
         if (ts - lastLoopTime >= loopInterval) {
           lastLoopTime = ts;
@@ -756,7 +761,8 @@
       const total = heroScroll.offsetHeight - window.innerHeight;
       const progress = clamp(-rect.top / total, 0, 1);
 
-      if (progress === 0) {
+      if (progress < 0.01) {
+        stopParticleLoop();
         startParticleLoop();
         return;
       }
