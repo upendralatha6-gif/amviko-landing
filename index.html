@@ -727,17 +727,21 @@
     // Auto-loop: ping-pong all frames at ~15fps while user hasn't scrolled
     let loopAnimId = null;
     let loopDir = 1;
-    let lastLoopTs = 0;
-    const loopMs = 1000 / 15;
+    let lastLoopTs = null;
+    const loopMs = 1000 / 30;
 
     function startLoop() {
       if (loopAnimId) return;
       heroContent.style.opacity = 0;
       heroContent.style.transform = 'translateY(18px)';
+      lastLoopTs = null;
       function tick(ts) {
-        if (ts - lastLoopTs >= loopMs) {
-          lastLoopTs = ts;
-          currentFrameIndex += loopDir;
+        if (lastLoopTs === null) lastLoopTs = ts;
+        const delta = ts - lastLoopTs;
+        if (delta >= loopMs) {
+          const steps = Math.floor(delta / loopMs);
+          lastLoopTs += steps * loopMs;
+          currentFrameIndex += loopDir * steps;
           if (currentFrameIndex >= frames.length - 1) { currentFrameIndex = frames.length - 2; loopDir = -1; }
           if (currentFrameIndex <= 0)                 { currentFrameIndex = 1;                 loopDir =  1; }
           drawCurrentFrame();
