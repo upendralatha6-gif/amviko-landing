@@ -724,52 +724,13 @@
       }
     }
 
-    // Particle loop: ping-pong through first ~25% of frames at ~12fps
-    const loopEnd = Math.round(frameCount * 0.25);
-    let loopAnimId = null;
-    let loopFrameDir = 1;
-    let lastLoopTime = 0;
-    const loopInterval = 1000 / 12;
-
-    function startParticleLoop() {
-      if (loopAnimId) return;
-      currentFrameIndex = 0;
-      loopFrameDir = 1;
-      lastLoopTime = 0;
-      heroContent.style.opacity = 0;
-      heroContent.style.transform = 'translateY(18px)';
-      function tick(ts) {
-        if (ts - lastLoopTime >= loopInterval) {
-          lastLoopTime = ts;
-          currentFrameIndex += loopFrameDir;
-          if (currentFrameIndex >= loopEnd) { currentFrameIndex = loopEnd - 1; loopFrameDir = -1; }
-          if (currentFrameIndex <= 0)       { currentFrameIndex = 0;           loopFrameDir =  1; }
-          drawCurrentFrame();
-        }
-        loopAnimId = requestAnimationFrame(tick);
-      }
-      loopAnimId = requestAnimationFrame(tick);
-    }
-
-    function stopParticleLoop() {
-      if (loopAnimId) { cancelAnimationFrame(loopAnimId); loopAnimId = null; }
-    }
-
     function onScroll() {
       if (!frames.length) return;
       const rect  = heroScroll.getBoundingClientRect();
       const total = heroScroll.offsetHeight - window.innerHeight;
       const progress = clamp(-rect.top / total, 0, 1);
 
-      if (progress < 0.01) {
-        stopParticleLoop();
-        startParticleLoop();
-        return;
-      }
-
-      stopParticleLoop();
-      const scrollFrames = frames.length - 1 - loopEnd;
-      currentFrameIndex = loopEnd + Math.round(progress * scrollFrames);
+      currentFrameIndex = Math.round(progress * (frames.length - 1));
       drawCurrentFrame();
 
       const textIn = clamp((progress - 0.6) / 0.35, 0, 1);
@@ -851,7 +812,6 @@
         frames = f;
         if (loader) loader.style.display = 'none';
         onScroll();
-        startParticleLoop();
         window.addEventListener('scroll', onScroll, { passive: true });
       }).catch(() => {
         // fallback: autoplay video, text visible
