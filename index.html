@@ -724,12 +724,45 @@
       }
     }
 
+    // Auto-loop: ping-pong all frames at ~15fps while user hasn't scrolled
+    let loopAnimId = null;
+    let loopDir = 1;
+    let lastLoopTs = 0;
+    const loopMs = 1000 / 15;
+
+    function startLoop() {
+      if (loopAnimId) return;
+      heroContent.style.opacity = 0;
+      heroContent.style.transform = 'translateY(18px)';
+      function tick(ts) {
+        if (ts - lastLoopTs >= loopMs) {
+          lastLoopTs = ts;
+          currentFrameIndex += loopDir;
+          if (currentFrameIndex >= frames.length - 1) { currentFrameIndex = frames.length - 2; loopDir = -1; }
+          if (currentFrameIndex <= 0)                 { currentFrameIndex = 1;                 loopDir =  1; }
+          drawCurrentFrame();
+        }
+        loopAnimId = requestAnimationFrame(tick);
+      }
+      loopAnimId = requestAnimationFrame(tick);
+    }
+
+    function stopLoop() {
+      if (loopAnimId) { cancelAnimationFrame(loopAnimId); loopAnimId = null; }
+    }
+
     function onScroll() {
       if (!frames.length) return;
       const rect  = heroScroll.getBoundingClientRect();
       const total = heroScroll.offsetHeight - window.innerHeight;
       const progress = clamp(-rect.top / total, 0, 1);
 
+      if (progress < 0.005) {
+        if (!loopAnimId) startLoop();
+        return;
+      }
+
+      stopLoop();
       currentFrameIndex = Math.round(progress * (frames.length - 1));
       drawCurrentFrame();
 
@@ -812,6 +845,7 @@
         frames = f;
         if (loader) loader.style.display = 'none';
         onScroll();
+        startLoop();
         window.addEventListener('scroll', onScroll, { passive: true });
       }).catch(() => {
         // fallback: autoplay video, text visible
