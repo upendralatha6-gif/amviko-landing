@@ -439,9 +439,146 @@
       .section-head h2 { font-size: clamp(1.6rem, 7vw, 2rem); }
       .contact-info h2 { font-size: clamp(1.6rem, 7vw, 2rem); }
     }
+
+    /* ── SCROLL PROGRESS BAR ── */
+    #scrollBar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 2px;
+      width: 0%;
+      background: var(--grad);
+      z-index: 200;
+      pointer-events: none;
+      transition: width 80ms linear;
+    }
+
+    /* ── AURORA ANIMATED BLOBS ── */
+    .aurora {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .aurora span {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      will-change: transform;
+    }
+    .aurora span:nth-child(1) {
+      width: 650px; height: 550px;
+      top: -8%; left: -4%;
+      background: rgba(123, 97, 255, 0.13);
+      animation: auroraDrift1 16s ease-in-out infinite;
+    }
+    .aurora span:nth-child(2) {
+      width: 760px; height: 630px;
+      top: -12%; right: -8%;
+      background: rgba(58, 61, 174, 0.15);
+      animation: auroraDrift2 21s ease-in-out infinite;
+    }
+    .aurora span:nth-child(3) {
+      width: 420px; height: 370px;
+      bottom: 18%; left: 33%;
+      background: rgba(168, 139, 255, 0.09);
+      animation: auroraDrift3 27s ease-in-out infinite;
+    }
+    @keyframes auroraDrift1 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      40%     { transform: translate(5%,10%) scale(1.12); }
+      70%     { transform: translate(-2%,5%) scale(0.95); }
+    }
+    @keyframes auroraDrift2 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      35%     { transform: translate(-6%,7%) scale(1.1); }
+      65%     { transform: translate(4%,-3%) scale(0.96); }
+    }
+    @keyframes auroraDrift3 {
+      0%,100% { transform: translate(0,0) scale(1); }
+      50%     { transform: translate(-8%,-10%) scale(1.2); }
+    }
+
+    /* ── EYEBROW DOT PULSE ── */
+    @keyframes eyebrowPulse {
+      0%,100% { box-shadow: 0 0 8px var(--accent-2); }
+      50%     { box-shadow: 0 0 22px var(--accent-2), 0 0 44px rgba(168,139,255,0.35); }
+    }
+    .eyebrow::before { animation: eyebrowPulse 2.6s ease-in-out infinite; }
+
+    /* ── CARD MOUSE-TRACKING GLOW ── */
+    .card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(123,97,255,0.18) 0%, transparent 65%);
+      opacity: 0;
+      transition: opacity 0.35s ease;
+      pointer-events: none;
+    }
+    .card:hover::after { opacity: 1; }
+
+    /* ── BRAND GLITCH ── */
+    @keyframes brandGlitch {
+      0%,100% { filter: none; transform: none; }
+      18%     { filter: hue-rotate(175deg) saturate(3); transform: translate(-2px,0) skewX(-1deg); }
+      20%     { filter: none; transform: none; }
+      36%     { filter: hue-rotate(265deg) saturate(2); transform: translate(2px,0) skewX(1deg); }
+      38%     { filter: none; transform: none; }
+    }
+    .brand.glitching { animation: brandGlitch 0.4s steps(1) forwards; }
+
+    /* ── FLOATING PARTICLES (hero) ── */
+    .particle {
+      position: absolute;
+      border-radius: 50%;
+      background: var(--accent-2);
+      box-shadow: 0 0 8px var(--accent-2);
+      z-index: 3;
+      pointer-events: none;
+      bottom: -10px;
+      animation: floatUp linear infinite;
+    }
+    @keyframes floatUp {
+      0%   { transform: translateY(0) scale(1);    opacity: 0; }
+      8%   { opacity: 1; }
+      90%  { opacity: 0.65; }
+      100% { transform: translateY(-106vh) scale(0.4); opacity: 0; }
+    }
+
+    /* ── PROCESS PROGRESS LINE ── */
+    .steps-progress {
+      height: 2px;
+      overflow: hidden;
+    }
+    .steps-progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--grad);
+      border-radius: 2px;
+      transition: width 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* ── DIRECTIONAL REVEAL VARIANTS ── */
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal-left  { opacity: 0; transform: translateX(-22px); transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1); }
+      .reveal-right { opacity: 0; transform: translateX(22px);  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1); }
+      .reveal-left.in, .reveal-right.in { opacity: 1; transform: none; }
+    }
+
+    /* ── REDUCED-MOTION KILLSWITCH ── */
+    @media (prefers-reduced-motion: reduce) {
+      .aurora span, .eyebrow::before { animation: none; }
+      .particle { display: none; }
+      .reveal-left, .reveal-right { opacity: 1; transform: none; }
+    }
   </style>
 </head>
 <body>
+
+  <div id="scrollBar"></div>
+  <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
 
   <!-- NAV -->
   <header id="header">
@@ -502,18 +639,18 @@
       </div>
 
       <div class="bento">
-        <div class="card feature c-w3 reveal">
+        <div class="card feature c-w3 reveal-left">
           <div class="ico"><i class="ph-duotone ph-gear-six"></i></div>
           <h3>Автоматизация процессов</h3>
           <p>Убираем рутину: обработка заявок, документов, отчётность и внутренние операции работают без ручного труда и ошибок.</p>
         </div>
-        <div class="card c-w3 reveal">
+        <div class="card c-w3 reveal-right">
           <div class="ico"><i class="ph-duotone ph-chats-circle"></i></div>
           <h3>Чат-боты</h3>
           <p>Боты для продаж и поддержки в Telegram, на сайте и в мессенджерах. Отвечают мгновенно, в любое время суток.</p>
         </div>
 
-        <div class="card c-w2 reveal">
+        <div class="card c-w2 reveal-left">
           <div class="ico"><i class="ph-duotone ph-robot"></i></div>
           <h3>ИИ-агенты</h3>
           <p>Автономные агенты, которые сами выполняют задачи и принимают решения по вашим правилам.</p>
@@ -523,7 +660,7 @@
           <h3>ИИ-сериалы</h3>
           <p>Серийный видеоконтент для продвижения бренда. Узнаваемые герои, регулярные выпуски, эффект сериала.</p>
         </div>
-        <div class="card c-w2 reveal">
+        <div class="card c-w2 reveal-right">
           <div class="ico"><i class="ph-duotone ph-sparkle"></i></div>
           <h3>Генерация контента</h3>
           <p>Тексты, изображения и видео для маркетинга в едином стиле бренда и в нужном объёме.</p>
@@ -548,6 +685,7 @@
         <h2>Как мы работаем</h2>
         <p>Прозрачный путь от первой встречи до работающего решения. Без долгих согласований и сюрпризов в счёте.</p>
       </div>
+      <div class="steps-progress"><div class="steps-progress-fill"></div></div>
       <div class="steps">
         <div class="step reveal">
           <span class="num">01</span>
@@ -580,11 +718,11 @@
       <blockquote class="reveal">Мы превращаем искусственный интеллект из модного слова в <b>понятный инструмент</b>, который экономит время и приносит деньги.</blockquote>
       <div class="metrics">
         <div class="metric reveal">
-          <div class="val">24/7</div>
+          <div class="val" data-count="24" data-suffix="/7">24/7</div>
           <div class="lbl">решения работают без выходных</div>
         </div>
         <div class="metric reveal">
-          <div class="val">2 недели</div>
+          <div class="val" data-count="2" data-suffix=" недели">2 недели</div>
           <div class="lbl">средний срок до первого прототипа</div>
         </div>
         <div class="metric reveal">
@@ -918,6 +1056,131 @@
       }
       return false;
     }
+  </script>
+  <script>
+    /* ── NEW ANIMATIONS ── */
+    const _prefersStill = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // 1. Scroll progress bar
+    const _scrollBar = document.getElementById('scrollBar');
+    window.addEventListener('scroll', () => {
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      _scrollBar.style.width = (window.scrollY / total * 100) + '%';
+    }, { passive: true });
+
+    // 2. Card mouse-tracking glow
+    document.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('mousemove', e => {
+        const r = card.getBoundingClientRect();
+        card.style.setProperty('--mx', ((e.clientX - r.left) / r.width  * 100) + '%');
+        card.style.setProperty('--my', ((e.clientY - r.top)  / r.height * 100) + '%');
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.setProperty('--mx', '50%');
+        card.style.setProperty('--my', '50%');
+      });
+    });
+
+    if (!_prefersStill) {
+      // 3. Brand glitch (every 6–10 s, random)
+      (function scheduleGlitch() {
+        setTimeout(() => {
+          document.querySelectorAll('.brand').forEach(b => {
+            b.classList.add('glitching');
+            setTimeout(() => b.classList.remove('glitching'), 420);
+          });
+          scheduleGlitch();
+        }, 6000 + Math.random() * 4000);
+      })();
+
+      // 4. Floating particles in hero
+      const _pin = document.querySelector('.hero-pin');
+      if (_pin) {
+        for (let i = 0; i < 9; i++) {
+          const p = document.createElement('div');
+          p.className = 'particle';
+          const sz = 2 + Math.random() * 3;
+          p.style.cssText = `left:${(8 + Math.random() * 84).toFixed(1)}%;`
+            + `width:${sz.toFixed(1)}px;height:${sz.toFixed(1)}px;`
+            + `animation-delay:${(Math.random() * 10).toFixed(1)}s;`
+            + `animation-duration:${(7 + Math.random() * 7).toFixed(1)}s;`
+            + `opacity:${(0.3 + Math.random() * 0.45).toFixed(2)};`;
+          _pin.appendChild(p);
+        }
+      }
+    }
+
+    // 5. Counter-up animation for numeric metrics
+    function _animateCount(el, to, suffix, dur) {
+      const t0 = performance.now();
+      const easeOut = t => 1 - Math.pow(1 - t, 3);
+      (function frame(now) {
+        const p = Math.min((now - t0) / dur, 1);
+        el.textContent = Math.round(to * easeOut(p)) + suffix;
+        if (p < 1) requestAnimationFrame(frame);
+      })(t0);
+    }
+    const _counterIO = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        const val = e.target.querySelector('.val[data-count]');
+        if (val) _animateCount(val, +val.dataset.count, val.dataset.suffix || '', 1400);
+        _counterIO.unobserve(e.target);
+      });
+    }, { threshold: 0.5 });
+    document.querySelectorAll('.metric').forEach(m => _counterIO.observe(m));
+
+    // 6. Process line sweep (draws left → right when steps scroll into view)
+    const _progressFill = document.querySelector('.steps-progress-fill');
+    if (_progressFill) {
+      const _stepsIO = new IntersectionObserver(entries => {
+        entries.forEach(e => {
+          if (!e.isIntersecting) return;
+          setTimeout(() => { _progressFill.style.width = '100%'; }, 200);
+          _stepsIO.unobserve(e.target);
+        });
+      }, { threshold: 0.25 });
+      const _stepsEl = document.querySelector('.steps');
+      if (_stepsEl) _stepsIO.observe(_stepsEl);
+    }
+
+    // 7. Directional reveal (reveal-left / reveal-right)
+    if (!_prefersStill) {
+      const _dirIO = new IntersectionObserver((entries) => {
+        entries.forEach((e, i) => {
+          if (!e.isIntersecting) return;
+          e.target.style.transitionDelay = (i % 5) * 80 + 'ms';
+          e.target.classList.add('in');
+          _dirIO.unobserve(e.target);
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+      document.querySelectorAll('.reveal-left, .reveal-right').forEach(el => _dirIO.observe(el));
+    }
+
+    // 8. Hero typewriter — fires once when scroll reveals the subtitle
+    const _heroPara = document.querySelector('.hero-content p');
+    const _heroText = _heroPara ? _heroPara.textContent : '';
+    let   _twDone   = false;
+
+    function _triggerTypewriter() {
+      if (_twDone || !_heroPara || _prefersStill) return;
+      _twDone = true;
+      _heroPara.textContent = '';
+      let i = 0;
+      const id = setInterval(() => {
+        _heroPara.textContent += _heroText[i++];
+        if (i >= _heroText.length) clearInterval(id);
+      }, 26);
+    }
+
+    window.addEventListener('scroll', () => {
+      if (_twDone) return;
+      const hs = document.querySelector('.hero-scroll');
+      if (!hs) return;
+      const total = hs.offsetHeight - window.innerHeight;
+      const prog  = Math.max(0, Math.min(1, -hs.getBoundingClientRect().top / total));
+      if (prog > 0.61) _triggerTypewriter();
+    }, { passive: true });
   </script>
 </body>
 </html>
