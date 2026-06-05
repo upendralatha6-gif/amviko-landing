@@ -829,7 +829,7 @@
         ctx.fillRect(0, 0, cw, ch);
 
         // foreground with faded edges drawn on tmp canvas then composited
-        const scale = Math.min(cw / fw, ch / fh) * 0.90;
+        const scale = Math.min(cw / fw, ch / fh) * 1.15;
         const dw = fw * scale, dh = fh * scale;
         const dx = (cw - dw) / 2, dy = (ch - dh) / 2;
         const fade = Math.min(dw, dh) * 0.05;
